@@ -336,7 +336,7 @@ class InterfazGrafica:
     
     def ejecutar(self) -> None:
         """Inicia la interfaz gráfica."""
-        print("✓ Hilo 3 iniciado: Visualización gráfica")
+        print("Hilo 3 Funciona, Muestra GUI")
         self._actualizar_visualizacion()
         self.raiz.mainloop()
     
