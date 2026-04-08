@@ -1,5 +1,4 @@
 import csv # para manejo de archivos CSV
-import random # para generar variaciones aleatorias entre los datos
 import threading # Hilos
 import time # para control de tiempos y pausas entre lecturas
 from collections import deque # para facilitarme la vida
@@ -21,6 +20,63 @@ except ImportError:
     tk: Any = None
     ttk: Any = None
     FigureCanvasTkAgg: Any = None
+
+
+# ========== GENERADOR PSEUDO-ALEATORIO ==========
+# Implementa un Linear Congruential Generator (LCG) para simular números 
+# aleatorios usando solo aritmética. Esta técnica es clásica en computación
+# y permite generar secuencias pseudo-aleatorias reproducibles basadas en
+# una semilla que varía con el timestamp del sistema.
+
+class GeneradorAleatorio:
+    """
+    Generador pseudo-aleatorio que usa Linear Congruential Generator (LCG).
+    
+    El LCG trabaja con la fórmula: X_n+1 = (a * X_n + c) mod m
+    - a: multiplicador (1103515245 es estándar)
+    - c: incremento (12345 es estándar)
+    - m: módulo (2^31, máximo para enteros de 32 bits sin signo)
+    
+    Ventaja: genera números determinísticos y reproducibles sin librerías externas.
+    """
+    
+    def __init__(self) -> None:
+        # Parámetros del LCG estándar (usados también en glibc)
+        self.a = 1103515245
+        self.c = 12345
+        self.m = 2**31
+        
+        # Inicializa la semilla usando timestamp del sistema en nanosegundos
+        # para mayor variabilidad incluso en llamadas rápidas
+        import time
+        self.semilla = int(time.time_ns()) % self.m
+    
+    def proximo(self) -> float:
+        """Genera el siguiente número pseudo-aleatorio en rango [0, 1)."""
+        # Actualiza la semilla usando la fórmula LCG
+        self.semilla = (self.a * self.semilla + self.c) % self.m
+        # Normaliza a rango [0, 1)
+        return self.semilla / self.m
+    
+    def uniforme(self, minimo: float, maximo: float) -> float:
+        """Genera un número pseudo-aleatorio uniforme en rango [minimo, maximo)."""
+        # Toma un número entre 0 y 1, y lo escala al rango deseado
+        valor_normalizado = self.proximo()
+        return minimo + valor_normalizado * (maximo - minimo)
+
+
+# Instancia global del generador para usar en todo el programa
+_generador_aleatorio = GeneradorAleatorio()
+
+
+def generar_aleatorio_uniforme(minimo: float, maximo: float) -> float:
+    """
+    Genera un número pseudo-aleatorio en rango [minimo, maximo).
+    
+    Usa Linear Congruential Generator sin depender de la librería 'random'.
+    Cada llamada actualiza la semilla interna para variar los resultados.
+    """
+    return _generador_aleatorio.uniforme(minimo, maximo)
 
 
 # ========== ESTRUCTURA DE DATOS ==========
@@ -49,9 +105,9 @@ class EstacionMeteorologica:
     historial: deque = field(default_factory=lambda: deque(maxlen=120))
     
     # Variables de simulación
-    temperatura_actual: float = field(default_factory=lambda: random.uniform(18.0, 30.0))
-    humedad_actual: float = field(default_factory=lambda: random.uniform(40.0, 80.0))
-    presion_actual: float = field(default_factory=lambda: random.uniform(1005.0, 1020.0))
+    temperatura_actual: float = field(default_factory=lambda: generar_aleatorio_uniforme(18.0, 30.0))
+    humedad_actual: float = field(default_factory=lambda: generar_aleatorio_uniforme(40.0, 80.0))
+    presion_actual: float = field(default_factory=lambda: generar_aleatorio_uniforme(1005.0, 1020.0))
     
     def __post_init__(self):
         """Inicializa el archivo CSV con encabezados."""
@@ -72,7 +128,7 @@ def limitar_rango(valor: float, minimo: float, maximo: float) -> float:
 
 def obtener_temperatura_siguiente(estacion: EstacionMeteorologica) -> float:
     """Simula variación realista de temperatura."""
-    variacion = random.uniform(-0.35, 0.35)
+    variacion = generar_aleatorio_uniforme(-0.35, 0.35)
     estacion.temperatura_actual = limitar_rango(
         estacion.temperatura_actual + variacion, 10.0, 40.0
     )
@@ -81,7 +137,7 @@ def obtener_temperatura_siguiente(estacion: EstacionMeteorologica) -> float:
 
 def obtener_humedad_siguiente(estacion: EstacionMeteorologica) -> float:
     """Simula variación realista de humedad."""
-    variacion = random.uniform(-1.2, 1.2)
+    variacion = generar_aleatorio_uniforme(-1.2, 1.2)
     estacion.humedad_actual = limitar_rango(
         estacion.humedad_actual + variacion, 15.0, 100.0
     )
@@ -90,7 +146,7 @@ def obtener_humedad_siguiente(estacion: EstacionMeteorologica) -> float:
 
 def obtener_presion_siguiente(estacion: EstacionMeteorologica) -> float:
     """Simula variación realista de presión."""
-    variacion = random.uniform(-0.55, 0.55)
+    variacion = generar_aleatorio_uniforme(-0.55, 0.55)
     estacion.presion_actual = limitar_rango(
         estacion.presion_actual + variacion, 980.0, 1040.0
     )
